@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Irrigatore</title>
+	<meta charset="UTF-8">
+</head>
+<body>
+	<br>
+	<!--iframe id="load" name="load" xonload="alert('ok')" xsrc="config.txt" height="160" width="330" xstyle="display:none;overflow:auto" ></iframe -->
+	<div id=output style="font-family:monospace;border:1px solid black;height:7cap; width:19cap"></div>
+	<!--textarea id=output column=20 rows=5 style="resize:none">a,<u>b</u>,c</textarea-->
+	<br>
+	<input type=button value="v" onclick="if (stack[0].down) output.innerHTML=stack[0].down()">
+	<input type=button value="<" onclick="output.innerHTML=stack[0].lefth()">
+	<input type=button value=">" onclick="output.innerHTML=stack[0].right()">	
+	<input type=button value="-" onclick="output.innerHTML=stack[0].minus()">
+	<input type=button value="+" onclick="output.innerHTML=stack[0].plus()">	
+	<input type=button value="^" onclick="output.innerHTML=stack[0].up()">
+	<form action="GetSet.php" method="post" enctype="multipart/form-data">
+		<input name="service" type=hidden>
+		<input name="data" type=hidden>
+		<!--input type=button value="^" onclick="getData()" title="Carica i dati dal file indicato">
+		<input type=button value="v" onclick="setData()" title="Salva i dati sul file indicato"-->	
+	</form>
+	<br>
+	<script>
+		config = {
+		   	'giorni': {'c': ['dow', 1, 1, 0, 1, 1, 0, 1], 'b': ['even'], 'a': ['every', 1]},
+		   	// 'orari': {'11:30': ['a'], '10:30': ['c'], '9:30': ['b', 'a']},
+			'orari' : {'c':[[10,30]], 'b':[[9,30]], 'a':[[9,30], [11,30]]},
+		   	'durate': {'c':[[9, 1], [1, 5]], 'b': [[4, 2], [3, 5]], 'a': [[2, 4], [1, 6]]}	
+		   	//'durate': {'c': {9:1, 1:5}, 'b': {4:2, 3:5}, 'a': {2:4, 1:6}}	
+		   }
+		/*
+		menu = {
+			giorni: { prog: [tipo], ... }, 
+			orari: { ora: [prg, ...], ... },
+			orari: { prog: [ora, ...], ... },
+			durate: { prog: { staz: min, ... }
+			durate: { prog: { ora : { staz: min, ... },  ... }, ...} 
+		}
+		*/
+		stack = []
+		function push(t, ... a) {
+			stack.unshift(obj = new t(... a))
+			return output.innerHTML = obj.value()
+		}
+		function pop(v) {
+			stack.shift()
+			if (stack.length == 0) return v 
+			if (v) stack[0].set(v)
+			return stack[0].value()
+		}
+		function I(ck, val) {
+			var [min, max] = typeof ck == 'number' ? [0, ck] : ck
+			var i = val || min
+			this.minus = ()=> i = i > min ? i - 1 : max 
+			this.plus  = ()=> i = i < max ? i + 1 : min
+			this.value = ()=> i
+			this.up    = ()=> pop(i)
+		}
+		function u(a, i, m) {
+			s = ""
+			if (!m)
+				for (ii in a) s += (ii == i ? "<u>" + a[ii] + "</u>" : a[ii]) + ", "
+			else
+				for (ii in a) s += (
+					ii == i && a[ii] ? "<u><b>" + m[ii] + "</b></u>"
+					: ii == i ? "<u>" + m[ii] + "</u>"
+					: a[ii] ? "<b>" + m[ii] +"</b>"
+					: m[ii]
+				) + ", "
+			return s.slice(0, -2)
+		}
+		function AI(ck, df, a, m) {
+			if (!a) a = df
+			var max = a.length - 1
+			var i = 0
+			if (!Array.isArray(ck) || ck.length != a.length) ck = Array(a.length).fill(ck) 
+			this.lefth = ()=> u(a, i = i > 0 ? i - 1 : max, m)
+			this.right = ()=> u(a, i = i < max ? i + 1 : 0, m)
+			this.value = ()=> u(a,i,m)
+			this.minus = ()=> { var [min, max] = ((ck)=> typeof ck == 'number' ? [0, ck] : ck)(ck[i]); a[i] = ((v)=> v > min ? v - 1 : max)(a[i]); return u(a,i,m) }
+			this.plus  = ()=> { var [min, max] = ((ck)=> typeof ck == 'number' ? [0, ck] : ck)(ck[i]); a[i] = ((v)=> v < max ? v + 1 : min)(a[i]); return u(a,i,m) }
+			this.up    = ()=> pop(a)
+		}
+		function AAI(ck, df, a) {
+			if (!a) a = [df]
+			var max = a.length - 1
+			var i = 0
+			this.lefth = ()=> u(a, i = i > 0 ? i - 1 : max)
+			this.right = ()=> u(a, i = i < max ? i + 1 : 0)
+			this.value = ()=> u(a,i)
+			this.minus = ()=> { max -= 1; return u(a = a.toSpliced(i, 1), i) }
+			this.plus  = ()=> {	max += 1; a = a.toSpliced(a.length==0?i:++i, 0, undefined); return this.down() }
+			this.down  = ()=> push(AI, ck, df, a[i])
+			this.up    = ()=> pop(a)
+			this.set   = (v)=> a[i] = v
+		}
+		function str(o) {
+			s = ""
+			for (k in o) s += k + ":" + o[k] + ", "
+			return s.substring(0, s.length-2)
+		}
+		Object.prototype.toString = str
+		function OO(o, god) {
+			var a = Object.keys(o)
+			if (god) a.sort()
+			var max = a.length - 1
+			var i = 0
+			this.lefth = ()=> u(a, i = i > 0 ? i - 1 : max)
+			this.right = ()=> u(a, i = i < max ? i + 1 : 0)
+			this.value = ()=> u(a, i)
+			this.minus = ()=> {
+				if (god == 'giorni') {
+					var p = a[i]; delete o[p]
+					a = Object.keys(o); a.sort(); max -= 1; if (i > max) i--
+					delete config.orari[p]; delete config.durate[p]
+				}
+				return u(a, i)
+			}
+			this.plus  = ()=> {
+				if (god == 'giorni') {
+					for (p of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']) if (!(p in o)) break; o[p] = ['every', 1]
+					a = Object.keys(o); a.sort(); max = a.length - 1; i = a.indexOf(p)
+					config.orari[p] = undefined, config.durate[p] = undefined
+				}
+				return u(a, i)
+			}
+			this.down  = ()=> {
+				if (!god) { let god = a[i]; return push(OO, o[god], god) }
+				switch (god) {
+					case 'giorni': return push(T, o[a[i]])
+					case  'orari': return push(AAI, [23,59], dDef(), o[a[i]])
+					case 'durate': return push(AAI, [[1,8], [1,60]], [1,1], o[a[i]])
+				}
+			}
+			this.up    = ()=> stack.length == 1 ? u(a, i) : pop()  
+			this.set   = (v)=> o[a[i]] = v 
+			function dDef() { var date = new Date(); return [date.getHours(),date.getMinutes()]	}
+		}
+		//String.fromCharCode(my_string.charCodeAt(my_string.length - 1) + 1)
+		function T(o) {
+			var a = ['every', 'dow', 'odd', 'even', 'o/e']
+			var i = a.indexOf(o[0])
+			var max = a.length - 1
+			this.lefth = ()=> u(a, i = i > 0 ? i - 1 : max)
+			this.right = ()=> u(a, i = i < max ? i + 1 : 0)
+			this.value = ()=> u(a, i)
+			this.down  = ()=> { 
+				switch (a[i]) {
+					case   'dow': return push(AI, 1, [0,0,0,0,0,0,0], o[0] == 'dow' ? o.slice(1) : undefined, ['L', 'Ma', 'Me', 'G', 'V', 'S', 'D'])
+					case 'every': return push(I, [1, 30], o[0] == 'every' ? o[1] : undefined)
+					case   'o/e': return push(I,  1, o[0] == 'o/e' ? o[1] : undefined)
+					case   'odd':
+					case  'even': return pop([a[i]])
+				}
+			}
+			this.up    = ()=> pop(o)
+			this.set   = (v)=> o = typeof v == 'number' ? [a[i], v] : [a[i], ... v]
+		}
+	
+		//push(A, ['a', 'b', 'c', 'd'])
+		//push(I, 23)
+		//push(I, 60)
+		//push(AI, [23,59], [0,0], [11,30]) 
+		//push(AI, 1, [0,0,0,0,0,0,0], [1,0,1,1,0,0,1]) 
+		//push(O, {'a':1, 'b':2 , 'c':3, 'd':4})
+		//push(T, {'a':[1,1], 'b':[2,2] , 'c':[3,3]})
+		//push(T, ['every', 'odd', 'even', 'o/e', 'dow']) 
+		//push(AAI, [23,59], [0,0], [[11,30],[12,40]]) 
+		push(OO, config)
+		console.log(config)
+	</script>
+	<!--script>
+		var form = document.forms[0]
+		function getData() { // upload
+			with (form) {
+				if (!file.value) return
+				service.value = 'Load'
+				target = 'load'
+				getIFrameBody('load').innerHTML = '' // se uso una var iframe non fa l'upload!
+				//document.all.load.src = file.value // in locale senza server in alternativa al submit
+				//document.all.load.src = 'config.txt' // in locale senza server in alternativa al submit
+				submit()
+			}
+		}
+		function setData() { // download
+			with (form) {
+				service.value = 'Save'
+				target=''
+				//alert('questo mando: ' + s)
+				data.value = getIFrameBody('load').innerHtml
+				submit()
+				data.value = ''
+			}	
+		}
+		function getIFrameBody(name) {
+			// recupero dell'iFrame (� una window)
+			//  w = document.frames[name] // solo explorer
+			var w = frames[name]
+			// recupero del document dall'iFrame
+			var d
+				= w.contentWindow ? w.contentWindow.document
+				: w.contentDocument ? w.contentDocument
+				: w.document
+			// recupero del body dal document
+			return d.body
+		}			
+	</script-->
+</body>

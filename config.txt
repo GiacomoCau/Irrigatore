@@ -1,0 +1,22 @@
+
+Giorni (di irrigazione per programma) (howOften)
+	giorni = { programma: days, ... }
+	
+		days
+			['every', n] # ogni n giorni
+			['odd']      # giorni dispari
+			['even']     # giorni pari
+			['o/e', n]   # giorni pari o dispari a seconda che n sia 0 o 1 
+			['dow', [L, Ma, Me, G, V, S, D]] # L, Ma, Me, G, V, S, D a seconda che siano 0 o 1 
+			
+	giorni = {'a': ['every', 1], 'b': ['even'], 'c': ['dow', 1, 1, 0, 1, 1, 0, 1]}
+
+Orari (di partenza per programma) (timeStart)
+	orari = { programma: [ ora, ... ], ... }
+	
+	orari = {'c':[hm(10,30)], 'b':[hm(9,30)], 'a':[hm(9,30), hm(11,30)], 'd':[hm(11,50)]}
+
+Durate (di irrigazione per programma e stazione) (runTime)
+	durate = { programma: [sm(stazione, minuti), ... ], ... } # con stazione fra 1 ed 8 e minuti tra 1 e 60
+
+	durate = {'a': [sm(1, 6), sm(2, 4)], 'b': [sm(3, 5), sm(4, 2)], 'c':[sm(1, 5), sm(9, 1)]}
