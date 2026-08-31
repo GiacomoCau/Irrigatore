@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Irrigatore</title>
+</head>
+<body>
+	<br>
+	<form action="GetSet.php" method="post" enctype="multipart/form-data">
+		<input name="service" type=hidden>
+		<input name="data" type=hidden>
+		<input name="file" type=file size=30 title="Selezione del file dei dati da caricare o salvare">
+		<input type=button class=button value=Get onclick="getData()" title="Carica i dati dal file indicato">
+		<input type=button class=button value=Set onclick="setData()" title="Salva i dati sul file indicato">	
+	</form>
+	<br>
+	<iframe id="load" name="load" xonload="alert('ok')" src="config.txt" height="160" width="330" xstyle="display:none;overflow:auto" ></iframe>
+	<script>
+		var form = document.forms[0]
+		function getData() { // upload
+			with (form) {
+				if (!file.value) return
+				service.value = 'Load'
+				target = 'load'
+				getIFrameBody('load').innerHTML = '' // se uso una var iframe non fa l'upload!
+				//document.all.load.src = file.value // in locale senza server in alternativa al submit
+				//document.all.load.src = 'config.txt' // in locale senza server in alternativa al submit
+				submit()
+			}
+		}
+		function setData() { // download
+			with (form) {
+				service.value = 'Save'
+				target=''
+				//alert('questo mando: ' + s)
+				data.value = getIFrameBody('load').innerHtml
+				submit()
+				data.value = ''
+			}	
+		}
+		function getIFrameBody(name) {
+			// recupero dell'iFrame (� una window)
+			//  w = document.frames[name] // solo explorer
+			var w = frames[name]
+			// recupero del document dall'iFrame
+			var d
+				= w.contentWindow ? w.contentWindow.document
+				: w.contentDocument ? w.contentDocument
+				: w.document
+			// recupero del body dal document
+			return d.body
+		}			
+	</script>
+</body>

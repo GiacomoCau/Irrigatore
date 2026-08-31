@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Config</title>
+	<meta charset="UTF-8">
+</head>
+<body onload="load()">
+	<br>
+	<div style="width:19cap; text-align:center; text-align:center">
+		<div id=output style="font-family:monospace; border:1px solid black; height:7cap; text-align:left; padding-left:6px"></div>
+		<br>
+		<div>
+			<input type=button value="v" onclick="if (stack[0].down) output.innerHTML=stack[0].down()">
+			<input type=button value="<" onclick="if (stack[0].left) output.innerHTML=stack[0].left()">
+			<input type=button value=">" onclick="if (stack[0].right) output.innerHTML=stack[0].right()">	
+			<input type=button value="-" onclick="if (stack[0].minus) output.innerHTML=stack[0].minus()">
+			<input type=button value="+" onclick="if (stack[0].plus) output.innerHTML=stack[0].plus()">	
+			<input type=button value="^" onclick="if (stack[0].up) output.innerHTML=stack[0].up()">
+		</div>
+	</div>
+	<script>
+		var config, maxProg = 8, maxStation = 8
+		function load() {
+			with (new XMLHttpRequest()) {
+				onload = function () { try { eval(responseText.slice(responseText.indexOf('giorni'))); config = {giorni, orari, durate}, push(OO, config) } catch (e) { alert(`load error: ${e}`) }  }
+				onerror = function (e) { alert(`load error: ${e.type}`) }
+				open("GET", 'load.php', false)
+				send()
+			}
+		}
+		function save() {
+			var s = "from datetime import time as hm\ndef sm(s, m): return [s, m]\n\n"
+			for (k in config) s += k + ' = ' + serialize(config[k]) + '\n'
+			with (new XMLHttpRequest()) {
+				onload = function (e) { alert('saved!') }
+				onerror = function (e) { alert(`save error: ${e.type}`) }
+				open("POST", 'save.php', false)
+				send(s)
+			}
+		}
+		function serialize(o) {
+			switch (typeof o) {
+				case 'string': 
+					return '\'' + o + '\''
+				case 'object': 
+					if (o === null) return null
+					if (o instanceof HM) return 'hm(' + o[0] + ',' + o[1] + ')'
+					if (o instanceof SM) return 'sm(' + o[0] + ',' + o[1] + ')'
+					if (Array.isArray(o)) {
+						var s = "";
+						for (i in o) s += sp(s, ', ') + serialize(o[i]); 
+						return '[' + s + ']'
+					}
+					var s = "";
+					for (k in o) s += sp(s, ', ') + serialize(k) + ':' + serialize(o[k]); 
+					return '{' + s + '}'
+				default:
+					return o.toString()	
+			}
+		}
+		
+		stack = []
+		function push(t, ... a) {
+			stack.unshift(obj = new t(... a))
+			return output.innerHTML = obj.value()
+		}
+		function pop(v) {
+			stack.shift()
+			if (stack.length == 0) return v 
+			if (v !== undefined) stack[0].set(v)
+			return stack[0].value()
+		}
+		
+		function I(ck, val) {
+			var [min, max] = typeof ck == 'number' ? [0, ck] : ck
+			var i = val || min
+			this.minus = ()=> i = i > min ? i - 1 : max 
+			this.plus  = ()=> i = i < max ? i + 1 : min
+			this.value = ()=> i
+			this.up    = ()=> pop(i)
+		}
+
+		function sp(b, sp) { return b ? sp : '' }
+		function ub(a, i, m) {
+			if (a instanceof HM)
+				return u(i==0, a[0]) + ":" + u(i==1, a[1])
+			if (a instanceof SM)
+				return u(i==0, "s" + a[0]) + "-" + u(i==1, a[1] + '\'')
+				
+			s = ""
+			if (!m)
+				for (ii in a) s += sp(s, ' ') + u(ii == i, a[ii])
+			else if (typeof m == 'string')
+				for (ii in a) s += sp(s, ' ') + u(ii == i, b(a[ii] == m, a[ii]))
+			else
+				for (ii in a) s += sp(s, ' ') + u(ii == i, b(a[ii], m[ii]))
+			return s
+			
+			function u(b, v) { return b ? "<u>" + v + "</u>" : v }
+			function b(b, v) { return b ? "<b>" + v + "</b>" : v }
+		}
+		
+		function AI(ck, df, a, m) {
+			if (!a) a = df
+			var max = a.length - 1
+			var i = 0
+			if (!Array.isArray(ck) || ck.length != a.length) ck = Array(a.length).fill(ck) 
+			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max, m)
+			this.right = ()=> ub(a, i = i < max ? i + 1 : 0, m)
+			this.value = ()=> ub(a, i, m)
+			this.minus = ()=> { var [min, max] = ((ck)=> typeof ck == 'number' ? [0, ck] : ck)(ck[i]); a[i] = ((v)=> v > min ? v - 1 : max)(a[i]); return ub(a, i ,m) }
+			this.plus  = ()=> { var [min, max] = ((ck)=> typeof ck == 'number' ? [0, ck] : ck)(ck[i]); a[i] = ((v)=> v < max ? v + 1 : min)(a[i]); return ub(a, i, m) }
+			this.up    = ()=> pop(a)
+		}
+		function AAI(ck, df, a) {
+			if (!a) a = [df]
+			a.sort((a, b)=> a[0] - b[0])
+			var max = a.length - 1
+			var i = 0
+			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max)
+			this.right = ()=> ub(a, i = i < max ? i + 1 : 0)
+			this.value = ()=> ub(a,i)
+			this.minus = ()=> { if (max > -1) max-=1; a = a.toSpliced(i, 1); if (i > max && i > 0) i-=1; return ub(a, i) }
+			this.plus  = ()=> {	max += 1; a = a.toSpliced(i, 0, undefined); return this.down() }
+			this.down  = ()=> push(AI, ck, df.slice(), a[i])
+			this.up    = ()=> pop(a)
+			this.set   = (v)=> { a[i] = v; a.sort((a, b)=> a[0] - b[0]); i = a.indexOf(v) }
+		}
+		
+		class HM extends Array {
+			constructor () { super(... arguments) }
+			toString() { return this[0] + ':' + ('0' + this[1]).slice(-2) }	
+		}
+		function hm(h, m) { return new HM(h, m) }
+		class SM extends Array {
+			constructor () { super(... arguments) }
+			toString() { return 's' + this[0] + '-' + this[1] +'\'' }	
+		}
+		function sm(s, m) { return new SM(s, m) }
+		
+		function OO(o, god) {
+			var a = Object.keys(o)
+			if (god) a.sort()
+			var max = a.length - 1
+			var i = 0
+			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max)
+			this.right = ()=> ub(a, i = i < max ? i + 1 : 0)
+			this.value = ()=> ub(a, i)
+			this.minus = ()=> {
+				if (god == 'giorni') {
+					var p = a[i]; delete o[p]
+					a = Object.keys(o); a.sort(); max -= 1; if (i > max) i--
+					delete config.orari[p]; delete config.durate[p]
+				}
+				return ub(a, i)
+			}
+			this.plus  = ()=> {
+				if (god == 'giorni') {
+					var prog=[]; for (i=0; i<maxProg; i+=1) prog.push(String.fromCharCode(97+i));
+					for (p of prog) if (!(p in o)) break; o[p] = ['every', 1]
+					a = Object.keys(o); a.sort(); max = a.length - 1; i = a.indexOf(p)
+					config.orari[p] = undefined, config.durate[p] = undefined
+				}
+				return ub(a, i)
+			}
+			this.down  = ()=> {
+				if (!god) { let god = a[i]; return push(OO, o[god], god) }
+				switch (god) {
+					case 'giorni': return push(D, o[a[i]])
+					case  'orari': return push(AAI, [23,59], hmDef(), o[a[i]])
+					case 'durate': return push(AAI, [[1,maxStation], [1,60]], sm(1,1), o[a[i]])
+				}
+			}
+			this.up    = ()=> stack.length == 1 ? (save(), ub(a, i)) : pop()  
+			this.set   = (v)=> o[a[i]] = v
+			function hmDef() { var date = new Date(); return new HM(date.getHours(), date.getMinutes()) }
+		}
+		function D(o) {
+			var a = ['every', 'dow', 'odd', 'even', 'o/e']
+			var i = a.indexOf(o[0])
+			var max = a.length - 1
+			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max, o[0])
+			this.right = ()=> ub(a, i = i < max ? i + 1 : 0, o[0])
+			this.value = ()=> ub(a, i, o[0])
+			this.down  = ()=> { 
+				switch (a[i]) {
+					case   'dow': return push(AI, 1, [0,0,0,0,0,0,0], o[0] == 'dow' ? o.slice(1) : undefined, ['L', 'Ma', 'Me', 'G', 'V', 'S', 'D'])
+					case 'every': return push(I, [1, 30], o[0] == 'every' ? o[1] : undefined)
+					case   'o/e': return push(I,  1, o[0] == 'o/e' ? o[1] : undefined)
+					case   'odd':
+					case  'even': this.set([]); return ub(a, i, o[0])
+				}
+			}
+			this.up    = ()=> pop(o)
+			this.set   = (v)=> o = typeof v == 'number' ? [a[i], v] : [a[i], ... v]
+		}
+	</script>
+</body>

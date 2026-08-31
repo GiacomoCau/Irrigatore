@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Irrigatore</title>
+	<meta charset="UTF-8">
+</head>
+<body>
+	<br>
+	<div style="width:19cap; text-align:center; text-align:center">
+		<div id=output style="font-family:monospace; border:1px solid black; height:7cap; text-align:left; padding-left:6px"></div>
+		<br>
+		<div>
+			<input type=button value="v" onclick="if (stack[0].down) output.innerHTML=stack[0].down()">
+			<input type=button value="<" onclick="if (stack[0].left) output.innerHTML=stack[0].left()">
+			<input type=button value=">" onclick="if (stack[0].right) output.innerHTML=stack[0].right()">	
+			<input type=button value="-" onclick="if (stack[0].minus) output.innerHTML=stack[0].minus()">
+			<input type=button value="+" onclick="if (stack[0].plus) output.innerHTML=stack[0].plus()">	
+			<input type=button value="^" onclick="if (stack[0].up) output.innerHTML=stack[0].up()">
+		</div>
+	</div>
+	<!--form action="GetSet.php" method="post" enctype="multipart/form-data">
+		<input name="service" type=hidden>
+		<input name="data" type=hidden>
+		<input type=button value="^" onclick="getData()" title="Carica i dati dal file indicato">
+		<input type=button value="v" onclick="setData()" title="Salva i dati sul file indicato">	
+	</form-->
+	<script>
+
+		stack = []
+		function push(t, ... a) {
+			stack.unshift(obj = new t(... a))
+			return output.innerHTML = obj.value()
+		}
+		function pop(v) {
+			stack.shift()
+			if (stack.length == 0) return v 
+			if (v !== undefined) stack[0].set(v)
+			return stack[0].value()
+		}
+		
+		function sp(b, sp) { return b ? sp : '' }
+		function ub(a, i, m) {
+			if (a instanceof HM)
+				return u(i==0, a[0]) + ":" + u(i==1, a[1])
+			if (a instanceof SM)
+				return u(i==0, a[0]) + ":" + u(i==1, a[1] + '\'')
+				
+			s = ""
+			if (!m)
+				for (ii in a) s += sp(s, ' ') + u(ii == i, a[ii])
+			else if (typeof m == 'string')
+				for (ii in a) s += sp(s, ' ') + u(ii == i, b(a[ii] == m, a[ii]))
+			else
+				for (ii in a) s += sp(s, ' ') + u(ii == i, b(a[ii], m[ii]))
+			return s
+			
+			function u(b, v) { return b ? "<u>" + v + "</u>" : v }
+			function b(b, v) { return b ? "<b>" + v + "</b>" : v }
+		}
+		function str(o) {
+			s = ""; for (k in o) s += sp(s, ', ') +  k + ':' + o[k]; return s
+		}
+		
+		function I(ck, val) {
+			var [min, max] = typeof ck == 'number' ? [0, ck] : ck
+			var i = val || min
+			this.minus = ()=> i = i > min ? i - 1 : max 
+			this.plus  = ()=> i = i < max ? i + 1 : min
+			this.value = ()=> i
+			this.up    = ()=> pop(i)
+		}
+		function AI(ck, df, a, m) {
+			if (!a) a = df
+			var max = a.length - 1
+			var i = 0
+			if (!Array.isArray(ck) || ck.length != a.length) ck = Array(a.length).fill(ck) 
+			this.left = ()=> ub(a, i = i > 0 ? i - 1 : max, m)
+			this.right = ()=> ub(a, i = i < max ? i + 1 : 0, m)
+			this.value = ()=> ub(a, i, m)
+			this.minus = ()=> { var [min, max] = ((ck)=> typeof ck == 'number' ? [0, ck] : ck)(ck[i]); a[i] = ((v)=> v > min ? v - 1 : max)(a[i]); return ub(a, i ,m) }
+			this.plus  = ()=> { var [min, max] = ((ck)=> typeof ck == 'number' ? [0, ck] : ck)(ck[i]); a[i] = ((v)=> v < max ? v + 1 : min)(a[i]); return ub(a, i, m) }
+			this.up    = ()=> pop(a)
+		}
+		function AAI(ck, df, a) {
+			if (!a) a = [df]
+			a.sort((a, b)=> a[0]-b[0])
+			var max = a.length - 1
+			var i = 0
+			this.left = ()=> ub(a, i = i > 0 ? i - 1 : max)
+			this.right = ()=> ub(a, i = i < max ? i + 1 : 0)
+			this.value = ()=> ub(a,i)
+			this.minus = ()=> { if (max > -1) max-=1; a = a.toSpliced(i, 1); if (i > max && i > 0) i-=1; return ub(a, i) }
+			this.plus  = ()=> {	max += 1; a = a.toSpliced(i, 0, undefined); return this.down() }
+			this.down  = ()=> push(AI, ck, df.slice(), a[i])
+			this.up    = ()=> pop(a)
+			this.set   = (v)=> { a[i] = v; a.sort((a, b)=> a[0] - b[0]); i = a.indexOf(v) }
+		}
+		
+		class HM extends Array {
+			constructor () { super(... arguments) }
+			toString() { return this[0] + ':' + ('0' + this[1]).slice(-2) }	
+		}
+		function hm(h, m) { return new HM(h, m) }
+		class SM extends Array {
+			constructor () { super(... arguments) }
+			toString() { return this[0] + ':' + this[1] +'\'' }	
+		}
+		function sm(s, m) { return new SM(s, m) }
+		
+		function OO(o, god) {
+			var a = Object.keys(o)
+			if (god) a.sort()
+			var max = a.length - 1
+			var i = 0
+			this.left = ()=> ub(a, i = i > 0 ? i - 1 : max)
+			this.right = ()=> ub(a, i = i < max ? i + 1 : 0)
+			this.value = ()=> ub(a, i)
+			this.minus = ()=> {
+				if (god == 'giorni') {
+					var p = a[i]; delete o[p]
+					a = Object.keys(o); a.sort(); max -= 1; if (i > max) i--
+					delete config.orari[p]; delete config.durate[p]
+				}
+				return ub(a, i)
+			}
+			this.plus  = ()=> {
+				if (god == 'giorni') {
+					// String.fromCharCode(my_string.charCodeAt(my_string.length - 1) + 1)
+					for (p of ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']) if (!(p in o)) break; o[p] = ['every', 1]
+					a = Object.keys(o); a.sort(); max = a.length - 1; i = a.indexOf(p)
+					config.orari[p] = undefined, config.durate[p] = undefined
+				}
+				return ub(a, i)
+			}
+			this.down  = ()=> {
+				if (!god) { let god = a[i]; return push(OO, o[god], god) }
+				switch (god) {
+					case 'giorni': return push(D, o[a[i]])
+					case  'orari': return push(AAI, [23,59], hmDef(), o[a[i]])
+					case 'durate': return push(AAI, [[1,8], [1,60]], sm(1,1), o[a[i]])
+				}
+			}
+			this.up    = ()=> stack.length == 1 ? ub(a, i) : pop()  
+			this.set   = (v)=> o[a[i]] = v
+			function hmDef() { var date = new Date(); return new HM(date.getHours(), date.getMinutes()) }
+		}
+		function D(o) {
+			var a = ['every', 'dow', 'odd', 'even', 'o/e']
+			var i = a.indexOf(o[0])
+			var max = a.length - 1
+			this.left = ()=> ub(a, i = i > 0 ? i - 1 : max, o[0])
+			this.right = ()=> ub(a, i = i < max ? i + 1 : 0, o[0])
+			this.value = ()=> ub(a, i, o[0])
+			this.down  = ()=> { 
+				switch (a[i]) {
+					case   'dow': return push(AI, 1, [0,0,0,0,0,0,0], o[0] == 'dow' ? o.slice(1) : undefined, ['L', 'Ma', 'Me', 'G', 'V', 'S', 'D'])
+					case 'every': return push(I, [1, 30], o[0] == 'every' ? o[1] : undefined)
+					case   'o/e': return push(I,  1, o[0] == 'o/e' ? o[1] : undefined)
+					case   'odd':
+					case  'even': this.set([]); return ub(a, i, o[0])
+				}
+			}
+			this.up    = ()=> pop(o)
+			this.set   = (v)=> o = typeof v == 'number' ? [a[i], v] : [a[i], ... v]
+		}
+	
+		config = {
+		   	'giorni': {'c': ['dow', 1, 1, 0, 1, 1, 0, 1], 'b': ['even'], 'a': ['every', 1]},
+		   	//'orari': {'11:30': ['a'], '10:30': ['c'], '9:30': ['b', 'a']},
+			//'orari' : {'c':[[10,30]], 'b':[[9,30]], 'a':[[9,30], [11,30]]},
+			'orari' : {'c':[hm(10,30)], 'b':[hm(9,30)], 'a':[hm(9,30), hm(11,30)]},
+		   	'durate': {'c':[sm(9,1), sm(1,5)], 'b': [sm(4,2), sm(3,5)], 'a': [sm(2,4), sm(1,6)]}	
+		   	//'durate': {'c': {9:1, 1:5}, 'b': {4:2, 3:5}, 'a': {2:4, 1:6}}	
+		}
+		push(OO, config)
+	</script>
+	<!--script>
+		var form = document.forms[0]
+		function getData() { // upload
+			with (form) {
+				if (!file.value) return
+				service.value = 'Load'
+				target = 'load'
+				getIFrameBody('load').innerHTML = '' // se uso una var iframe non fa l'upload!
+				//document.all.load.src = file.value // in locale senza server in alternativa al submit
+				//document.all.load.src = 'config.txt' // in locale senza server in alternativa al submit
+				submit()
+			}
+		}
+		function setData() { // download
+			with (form) {
+				service.value = 'Save'
+				target=''
+				//alert('questo mando: ' + s)
+				data.value = getIFrameBody('load').innerHtml
+				submit()
+				data.value = ''
+			}	
+		}
+		function getIFrameBody(name) {
+			// recupero dell'iFrame (� una window)
+			//  w = document.frames[name] // solo explorer
+			var w = frames[name]
+			// recupero del document dall'iFrame
+			var d
+				= w.contentWindow ? w.contentWindow.document
+				: w.contentDocument ? w.contentDocument
+				: w.document
+			// recupero del body dal document
+			return d.body
+		}			
+	</script-->
+</body>
