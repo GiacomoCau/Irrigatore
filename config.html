@@ -22,7 +22,17 @@
 		var config, maxProg = 8, maxStation = 8
 		function load() {
 			with (new XMLHttpRequest()) {
-				onload = function () { try { eval(responseText.slice(responseText.indexOf('giorni'))); config = {giorni, orari, durate}, push(OO, config) } catch (e) { alert(`load error: ${e}`) }  }
+				onload = function () {
+					try {
+						eval(responseText.slice(responseText.indexOf('progs')))
+						push(O, progs)
+						if (Object.keys(progs).length == 1)
+							stack[0].down()
+					}
+					catch (e) {
+						alert(`load error: ${e}`) 
+					}
+				}
 				onerror = function (e) { alert(`load error: ${e.type}`) }
 				open("GET", 'load.php', false)
 				send()
@@ -30,7 +40,10 @@
 		}
 		function save() {
 			var s = "from datetime import time as hm\ndef sm(s, m): return [s, m]\n\n"
-			for (k in config) s += k + ' = ' + serialize(config[k]) + '\n'
+			//s += 'progs = ' + serialize(progs) + '\n'
+			s += 'progs = {\n'
+			for (p in progs) s += '\t\'' + p + '\': ' + serialize(progs[p]) + ',\n'
+			s += '}\n'
 			with (new XMLHttpRequest()) {
 				onload = function (e) { alert('saved!') }
 				onerror = function (e) { alert(`save error: ${e.type}`) }
@@ -138,41 +151,45 @@
 		}
 		function sm(s, m) { return new SM(s, m) }
 		
-		function OO(o, god) {
+		function O(o) {
 			var a = Object.keys(o)
-			if (god) a.sort()
+			a.sort()
 			var max = a.length - 1
 			var i = 0
 			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max)
 			this.right = ()=> ub(a, i = i < max ? i + 1 : 0)
 			this.value = ()=> ub(a, i)
 			this.minus = ()=> {
-				if (god == 'giorni') {
-					var p = a[i]; delete o[p]
-					a = Object.keys(o); a.sort(); max -= 1; if (i > max) i--
-					delete config.orari[p]; delete config.durate[p]
-				}
+				var p = a[i]; delete o[p]
+				a = Object.keys(o); a.sort(); max -= 1; if (i > max) i--
 				return ub(a, i)
 			}
 			this.plus  = ()=> {
-				if (god == 'giorni') {
-					var prog=[]; for (i=0; i<maxProg; i+=1) prog.push(String.fromCharCode(97+i));
-					for (p of prog) if (!(p in o)) break; o[p] = ['every', 1]
-					a = Object.keys(o); a.sort(); max = a.length - 1; i = a.indexOf(p)
-					config.orari[p] = undefined, config.durate[p] = undefined
-				}
+				var prog=[]; for (i=0; i<maxProg; i+=1) prog.push(String.fromCharCode(97+i));
+				for (p of prog) if (!(p in o)) break; o[p] = [['every', 1]]
+				a = Object.keys(o); a.sort(); max = a.length - 1; i = a.indexOf(p)
 				return ub(a, i)
 			}
-			this.down  = ()=> {
-				if (!god) { let god = a[i]; return push(OO, o[god], god) }
-				switch (god) {
-					case 'giorni': return push(D, o[a[i]])
-					case  'orari': return push(AAI, [23,59], hmDef(), o[a[i]])
-					case 'durate': return push(AAI, [[1,maxStation], [1,60]], sm(1,1), o[a[i]])
-				}
-			}
+			this.down  = ()=> push(GOD, o[a[i]])
 			this.up    = ()=> stack.length == 1 ? (save(), ub(a, i)) : pop()  
 			this.set   = (v)=> o[a[i]] = v
+		}
+		function GOD(v) {
+			var a = ['giorni', 'orari', 'durate']
+			var max = a.length - 1
+			var i = 0
+			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max)
+			this.right = ()=> ub(a, i = i < max ? i + 1 : 0)
+			this.value = ()=> ub(a, i)
+			this.down  = ()=> {
+				switch (a[i]) {
+					case 'giorni': return push(D, v[i])
+					case  'orari': return push(AAI, [23,59], hmDef(), v[i])
+					case 'durate': return push(AAI, [[1,maxStation], [1,60]], sm(1,1), v[i])
+				}
+			}
+			this.up    = ()=> pop(v)
+			this.set   = (vv)=> v[i] = vv
 			function hmDef() { var date = new Date(); return new HM(date.getHours(), date.getMinutes()) }
 		}
 		function D(o) {

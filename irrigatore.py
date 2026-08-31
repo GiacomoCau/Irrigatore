@@ -2,8 +2,6 @@
 import datetime as dt
 import time as tm
 
-#from datetime import time as hm
-#def sm(s, m): return [s, m]
 import config, os
 mtime = dt.date.fromtimestamp(os.path.getmtime(config.__file__))
 
@@ -37,15 +35,17 @@ def isToday (now, tipo, *param):
             return param[now.weekday()] == 1
         case _:
             print("invalid parameter₁:", param)
-    
+
 def today (*now):
     now = dt.datetime.today() if len(now) == 0 else now[0]
     date = now.date()
-    progs = [p for (p, args) in config.giorni.items() if isToday(date, *args)]
+    progs = [p for (p, god) in config.progs.items() if len(god) == 3 and isToday(date, *god[0])]
     time = now.time()
-    starts = sorted([(t, sorted(ps)) for (t, ps) in invert(config.orari).items() if t >= time and any(x in ps for x in progs)])
-    durate = {p : sorted([[s, m] for (s, m) in ds if s >= 1 and s <= maxS]) for (p, ds) in config.durate.items()}
-    return [[t, [[p, durate[p]] for p in ps if p in progs and p in durate]] for (t, ps) in starts]
+    starts = invert({p: god[1] for (p, god) in config.progs.items() if len(god) == 3 and p in progs})
+    starts = sorted([(t, sorted(ps)) for (t, ps) in starts.items() if t >= time])
+    durate = {p: god[2] for (p, god) in config.progs.items() if len(god) == 3 and p in progs}
+    durate = {p: sorted([[s, m] for (s, m) in ds if s >= 1 and s <= maxS]) for (p, ds) in durate.items()}
+    return [[t, [[p, durate[p]] for p in ps]] for (t, ps) in starts]
 
 #today(dt.datetime.combine(dt.datetime.today(), dt.time(8,30)))
 #today(dt.datetime(2026,8,6,8,30))
