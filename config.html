@@ -10,9 +10,9 @@
 		<div id=output style="font-family:monospace; border:1px solid black; height:7cap; text-align:left; padding-left:6px"></div>
 		<br>
 		<div>
-			<input type=button value="v" onclick="if (stack[0].down) output.innerHTML=stack[0].down()">
 			<input type=button value="<" onclick="if (stack[0].left) output.innerHTML=stack[0].left()">
 			<input type=button value=">" onclick="if (stack[0].right) output.innerHTML=stack[0].right()">	
+			<input type=button value="v" onclick="if (stack[0].down) output.innerHTML=stack[0].down()">
 			<input type=button value="-" onclick="if (stack[0].minus) output.innerHTML=stack[0].minus()">
 			<input type=button value="+" onclick="if (stack[0].plus) output.innerHTML=stack[0].plus()">	
 			<input type=button value="^" onclick="if (stack[0].up) output.innerHTML=stack[0].up()">
@@ -20,14 +20,23 @@
 	</div>
 	<script>
 		var config, maxProg = 8, maxStation = 8
+		var local = true
 		function load() {
-			with (new XMLHttpRequest()) {
+			if (local) {
+				progs = {
+			     	'a': [['every', 1], [hm(9,30), hm(11,30)], [sm(2,4), sm(1,6)]],
+			     	'b': [['even'], [hm(9,30)], [sm(3,5), sm(4,2)]],
+			     	'c': [['dow', 1, 1, 0, 1, 1, 0, 1], [hm(10,30)], [sm(9,1), sm(1,5)]],
+				}
+				push(O, progs)
+				if (Object.keys(progs).length == 1)	stack[0].down()
+			}
+			else with (new XMLHttpRequest()) {
 				onload = function () {
 					try {
 						eval(responseText.slice(responseText.indexOf('progs')))
 						push(O, progs)
-						if (Object.keys(progs).length == 1)
-							stack[0].down()
+						if (Object.keys(progs).length == 1)	stack[0].down()
 					}
 					catch (e) {
 						alert(`load error: ${e}`) 
@@ -39,16 +48,20 @@
 			}
 		}
 		function save() {
-			var s = "from datetime import time as hm\ndef sm(s, m): return [s, m]\n\n"
-			//s += 'progs = ' + serialize(progs) + '\n'
-			s += 'progs = {\n'
-			for (p in progs) s += '\t\'' + p + '\': ' + serialize(progs[p]) + ',\n'
-			s += '}\n'
-			with (new XMLHttpRequest()) {
-				onload = function (e) { alert('saved!') }
-				onerror = function (e) { alert(`save error: ${e.type}`) }
-				open("POST", 'save.php', false)
-				send(s)
+			if (local)
+				alert('saved!')
+			else {
+				var s = "from datetime import time as hm\ndef sm(s, m): return [s, m]\n\n"
+				//s += 'progs = ' + serialize(progs) + '\n'
+				s += 'progs = {\n'
+				for (p in progs) s += '\t\'' + p + '\': ' + serialize(progs[p]) + ',\n'
+				s += '}\n'
+				with (new XMLHttpRequest()) {
+					onload = function (e) { alert('saved!') }
+					onerror = function (e) { alert(`save error: ${e.type}`) }
+					open("POST", 'save.php', false)
+					send(s)
+				}
 			}
 		}
 		function serialize(o) {
@@ -61,11 +74,11 @@
 					if (o instanceof SM) return 'sm(' + o[0] + ',' + o[1] + ')'
 					if (Array.isArray(o)) {
 						var s = "";
-						for (i in o) s += sp(s, ', ') + serialize(o[i]); 
+						for (var i in o) s += sp(s, ', ') + serialize(o[i]); 
 						return '[' + s + ']'
 					}
 					var s = "";
-					for (k in o) s += sp(s, ', ') + serialize(k) + ':' + serialize(o[k]); 
+					for (var k in o) s += sp(s, ', ') + serialize(k) + ':' + serialize(o[k]); 
 					return '{' + s + '}'
 				default:
 					return o.toString()	
@@ -125,14 +138,14 @@
 			this.plus  = ()=> { var [min, max] = ((ck)=> typeof ck == 'number' ? [0, ck] : ck)(ck[i]); a[i] = ((v)=> v < max ? v + 1 : min)(a[i]); return ub(a, i, m) }
 			this.up    = ()=> pop(a)
 		}
-		function AAI(ck, df, a) {
+		function AAI(ck, df, des, a) {
 			if (!a) a = [df]
 			a.sort((a, b)=> a[0] - b[0])
 			var max = a.length - 1
 			var i = 0
-			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max)
-			this.right = ()=> ub(a, i = i < max ? i + 1 : 0)
-			this.value = ()=> ub(a,i)
+			this.left  = ()=> des + ub(a, i = i > 0 ? i - 1 : max)
+			this.right = ()=> des + ub(a, i = i < max ? i + 1 : 0)
+			this.value = ()=> des + ub(a,i)
 			this.minus = ()=> { if (max > -1) max-=1; a = a.toSpliced(i, 1); if (i > max && i > 0) i-=1; return ub(a, i) }
 			this.plus  = ()=> {	max += 1; a = a.toSpliced(i, 0, undefined); return this.down() }
 			this.down  = ()=> push(AI, ck, df.slice(), a[i])
@@ -156,36 +169,37 @@
 			a.sort()
 			var max = a.length - 1
 			var i = 0
-			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max)
-			this.right = ()=> ub(a, i = i < max ? i + 1 : 0)
-			this.value = ()=> ub(a, i)
+			des = 'programs<br>'
+			this.left  = ()=> des + ub(a, i = i > 0 ? i - 1 : max)
+			this.right = ()=> des + ub(a, i = i < max ? i + 1 : 0)
+			this.value = ()=> des + ub(a, i)
 			this.minus = ()=> {
 				var p = a[i]; delete o[p]
 				a = Object.keys(o); a.sort(); max -= 1; if (i > max) i--
-				return ub(a, i)
+				return des + ub(a, i)
 			}
 			this.plus  = ()=> {
 				var prog=[]; for (i=0; i<maxProg; i+=1) prog.push(String.fromCharCode(97+i));
-				for (p of prog) if (!(p in o)) break; o[p] = [['every', 1]]
+				for (var p of prog) if (!(p in o)) break; o[p] = [['every', 1]]
 				a = Object.keys(o); a.sort(); max = a.length - 1; i = a.indexOf(p)
-				return ub(a, i)
+				return des + ub(a, i)
 			}
 			this.down  = ()=> push(GOD, o[a[i]])
-			this.up    = ()=> stack.length == 1 ? (save(), ub(a, i)) : pop()  
+			this.up    = ()=> stack.length == 1 ? (save(), des + ub(a, i)) : pop()  
 			this.set   = (v)=> o[a[i]] = v
 		}
 		function GOD(v) {
-			var a = ['giorni', 'orari', 'durate']
+			var a = ['howOften', 'startTime', 'runTime']
 			var max = a.length - 1
 			var i = 0
 			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max)
 			this.right = ()=> ub(a, i = i < max ? i + 1 : 0)
 			this.value = ()=> ub(a, i)
 			this.down  = ()=> {
-				switch (a[i]) {
-					case 'giorni': return push(D, v[i])
-					case  'orari': return push(AAI, [23,59], hmDef(), v[i])
-					case 'durate': return push(AAI, [[1,maxStation], [1,60]], sm(1,1), v[i])
+				switch (i) {
+					case 0: return push(D, v[i])
+					case 1: return push(AAI, [23,59], hmDef(), a[i] + '<br>', v[i])
+					case 2: return push(AAI, [[1,maxStation], [1,60]], sm(1,1), a[i] + '<br>', v[i])
 				}
 			}
 			this.up    = ()=> pop(v)
@@ -201,7 +215,7 @@
 			this.value = ()=> ub(a, i, o[0])
 			this.down  = ()=> { 
 				switch (a[i]) {
-					case   'dow': return push(AI, 1, [0,0,0,0,0,0,0], o[0] == 'dow' ? o.slice(1) : undefined, ['L', 'Ma', 'Me', 'G', 'V', 'S', 'D'])
+					case   'dow': return push(AI, 1, [0,0,0,0,0,0,0], o[0] == 'dow' ? o.slice(1) : undefined, ['M', 'Tu', 'W', 'Th', 'F', 'Sa', 'Su'])
 					case 'every': return push(I, [1, 30], o[0] == 'every' ? o[1] : undefined)
 					case   'o/e': return push(I,  1, o[0] == 'o/e' ? o[1] : undefined)
 					case   'odd':
