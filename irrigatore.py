@@ -50,7 +50,7 @@ def today (*now):
 #today(dt.datetime.combine(dt.datetime.today(), dt.time(8,30)))
 #today(dt.datetime(2026,8,6,8,30))
 
-delay = 1 # 0 nessun delay, 1 delay, 1/12 delay 5" per 1', 1/3600 1h per 1s
+delay = 1 # 0 nessun delay, 1 delay effettivo, 1/12 delay 5" per 1', 1/60 delay 1" per 1', 1/3600 delay 1" per 1h
 
 def sleep(minuti):
     if delay > 0: tm.sleep(minuti*60*delay)

@@ -20,7 +20,7 @@
 	</div>
 	<script>
 		var config, maxProg = 8, maxStation = 8
-		var local = true
+		var local = false
 		function load() {
 			if (local) {
 				progs = {
@@ -28,14 +28,14 @@
 			     	'b': [['even'], [hm(9,30)], [sm(3,5), sm(4,2)]],
 			     	'c': [['dow', 1, 1, 0, 1, 1, 0, 1], [hm(10,30)], [sm(9,1), sm(1,5)]],
 				}
-				push(O, progs)
+				push(P, progs)
 				if (Object.keys(progs).length == 1)	stack[0].down()
 			}
 			else with (new XMLHttpRequest()) {
 				onload = function () {
 					try {
 						eval(responseText.slice(responseText.indexOf('progs')))
-						push(O, progs)
+						push(P, progs)
 						if (Object.keys(progs).length == 1)	stack[0].down()
 					}
 					catch (e) {
@@ -43,7 +43,7 @@
 					}
 				}
 				onerror = function (e) { alert(`load error: ${e.type}`) }
-				open("GET", 'load.php', false)
+				open("GET", 'server.py', false)
 				send()
 			}
 		}
@@ -52,14 +52,13 @@
 				alert('saved!')
 			else {
 				var s = "from datetime import time as hm\ndef sm(s, m): return [s, m]\n\n"
-				//s += 'progs = ' + serialize(progs) + '\n'
 				s += 'progs = {\n'
 				for (p in progs) s += '\t\'' + p + '\': ' + serialize(progs[p]) + ',\n'
 				s += '}\n'
 				with (new XMLHttpRequest()) {
-					onload = function (e) { alert('saved!') }
+					onload = function (e) { alert(responseText) }
 					onerror = function (e) { alert(`save error: ${e.type}`) }
-					open("POST", 'save.php', false)
+					open("POST", 'server.py', false)
 					send(s)
 				}
 			}
@@ -164,7 +163,7 @@
 		}
 		function sm(s, m) { return new SM(s, m) }
 		
-		function O(o) {
+		function P(o) {
 			var a = Object.keys(o)
 			a.sort()
 			var max = a.length - 1
@@ -179,9 +178,11 @@
 				return des + ub(a, i)
 			}
 			this.plus  = ()=> {
-				var prog=[]; for (i=0; i<maxProg; i+=1) prog.push(String.fromCharCode(97+i));
-				for (var p of prog) if (!(p in o)) break; o[p] = [['every', 1]]
-				a = Object.keys(o); a.sort(); max = a.length - 1; i = a.indexOf(p)
+				var prog=[]; for (var j=0; j<maxProg; j+=1) prog.push(String.fromCharCode(97+j));
+				for (var p of prog) if (!(p in o)) {
+					o[p] = [['every', 1]]; a = Object.keys(o); a.sort(); max = a.length - 1; i = a.indexOf(p)
+					break
+				}
 				return des + ub(a, i)
 			}
 			this.down  = ()=> push(GOD, o[a[i]])
