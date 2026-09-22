@@ -13,75 +13,84 @@
 			<input type=button value="<" onclick="if (stack[0].left) output.innerHTML=stack[0].left()">
 			<input type=button value=">" onclick="if (stack[0].right) output.innerHTML=stack[0].right()">	
 			<input type=button value="v" onclick="if (stack[0].down) output.innerHTML=stack[0].down()">
-			<input type=button value="-" onclick="if (stack[0].minus) output.innerHTML=stack[0].minus()">
 			<input type=button value="+" onclick="if (stack[0].plus) output.innerHTML=stack[0].plus()">	
+			<input type=button value="-" onclick="if (stack[0].minus) output.innerHTML=stack[0].minus()">
 			<input type=button value="^" onclick="if (stack[0].up) output.innerHTML=stack[0].up()">
 		</div>
 	</div>
+	<script src="httpRequest.js"></script>
 	<script>
 		var config, maxProg = 8, maxStation = 8
 		var local = false
 		function load() {
-			if (local) {
-				progs = {
-			     	'a': [['every', 1], [hm(9,30), hm(11,30)], [sm(2,4), sm(1,6)]],
-			     	'b': [['even'], [hm(9,30)], [sm(3,5), sm(4,2)]],
-			     	'c': [['dow', 1, 1, 0, 1, 1, 0, 1], [hm(10,30)], [sm(9,1), sm(1,5)]],
-				}
-				push(P, progs)
-				if (Object.keys(progs).length == 1)	stack[0].down()
-			}
-			else with (new XMLHttpRequest()) {
-				onload = function () {
+			httpRequest({
+				method:'get', url:'server.py?load', async:false,
+				onload: function () {
 					try {
-						eval(responseText.slice(responseText.indexOf('progs')))
+						eval(this.responseText.slice(this.responseText.indexOf('progs')))
 						push(P, progs)
 						if (Object.keys(progs).length == 1)	stack[0].down()
 					}
 					catch (e) {
-						alert(`load error: ${e}`) 
+						alert(`load error₁: ${e}`) 
 					}
-				}
-				onerror = function (e) { alert(`load error: ${e.type}`) }
-				open("GET", 'server.py', false)
-				send()
-			}
+				},
+				onerror: function (e) { alert(`load error₂: ${e.type}`) }
+			}).send()
 		}
 		function save() {
-			if (local)
-				alert('saved!')
-			else {
-				var s = "from datetime import time as hm\ndef sm(s, m): return [s, m]\n\n"
-				s += 'progs = {\n'
-				for (p in progs) s += '\t\'' + p + '\': ' + serialize(progs[p]) + ',\n'
-				s += '}\n'
-				with (new XMLHttpRequest()) {
-					onload = function (e) { alert(responseText) }
-					onerror = function (e) { alert(`save error: ${e.type}`) }
-					open("POST", 'server.py', false)
-					send(s)
-				}
-			}
+			var s = 'from datetime import time as hm\ndef sm(s, m): return [s, m]\n\n'
+			s += 'progs = {\n'
+			for (p in progs) s += '\t\'' + p + '\': ' + serialize(progs[p]) + ',\n'
+			s += '}\n'
+			httpRequest({
+				method:'post', url:'server.py?save', async:false, body:s,
+				onload: function (e) { alert(this.responseText) },
+				onerror: function (e) { alert(`save error: ${e.type}`) },					
+			}).send()
 		}
 		function serialize(o) {
 			switch (typeof o) {
 				case 'string': 
 					return '\'' + o + '\''
 				case 'object': 
-					if (o === null) return null
+					if (o === null) return 'null'
 					if (o instanceof HM) return 'hm(' + o[0] + ',' + o[1] + ')'
 					if (o instanceof SM) return 'sm(' + o[0] + ',' + o[1] + ')'
 					if (Array.isArray(o)) {
-						var s = "";
+						var s = '';
 						for (var i in o) s += sp(s, ', ') + serialize(o[i]); 
 						return '[' + s + ']'
 					}
-					var s = "";
+					var s = '';
 					for (var k in o) s += sp(s, ', ') + serialize(k) + ':' + serialize(o[k]); 
 					return '{' + s + '}'
 				default:
 					return o.toString()	
 			}
+		}
+		var pid = {}
+		function start(p, s, a, i) {
+			var ps = p + (s ? ' ' : '') + s
+			httpRequest({
+				method:'get', url:'server.py?start ' + ps, async:false,
+				onload: function () { a[i]=1; pid[ps] = this.responseText; },
+				onerror: function (e) { alert(`start error: ${e.type}`) },
+			}).send()
+			if (!pid[ps]) return
+			httpRequest({
+				method:'get', url:'server.py?wait ' + pid[ps], async:true,
+				onload: function () { delete pid[ps]; a[i]=0; if (stack[0] instanceof M && stack[0].p == p) output.innerHTML = stack[0].value()  },
+				onerror: function (e) { delete pid[ps]; a[i]=0; alert(`wait error: ${e.type}`); },
+			}).send()
+		}
+		function stop(p, s, a, i) {
+			var ps = p + (s ? ' ' : '') + s
+			if (!pid[ps]) return
+			httpRequest({
+				method:'get', url:'server.py?stop ' + pid[ps] + ' ' + ps, async:false,
+				onerror: function (e) { alert(`stop error: ${e.type}`); },
+			}).send()
 		}
 		
 		stack = []
@@ -99,8 +108,8 @@
 		function I(ck, val) {
 			var [min, max] = typeof ck == 'number' ? [0, ck] : ck
 			var i = val || min
-			this.minus = ()=> i = i > min ? i - 1 : max 
 			this.plus  = ()=> i = i < max ? i + 1 : min
+			this.minus = ()=> i = i > min ? i - 1 : max 
 			this.value = ()=> i
 			this.up    = ()=> pop(i)
 		}
@@ -108,11 +117,11 @@
 		function sp(b, sp) { return b ? sp : '' }
 		function ub(a, i, m) {
 			if (a instanceof HM)
-				return u(i==0, a[0]) + ":" + u(i==1, a[1])
+				return u(i==0, a[0]) + ':' + u(i==1, a[1])
 			if (a instanceof SM)
-				return u(i==0, "s" + a[0]) + "-" + u(i==1, a[1] + '\'')
+				return u(i==0, 's' + a[0]) + '-' + u(i==1, a[1] + '\'')
 				
-			s = ""
+			s = ''
 			if (!m)
 				for (ii in a) s += sp(s, ' ') + u(ii == i, a[ii])
 			else if (typeof m == 'string')
@@ -121,8 +130,8 @@
 				for (ii in a) s += sp(s, ' ') + u(ii == i, b(a[ii], m[ii]))
 			return s
 			
-			function u(b, v) { return b ? "<u>" + v + "</u>" : v }
-			function b(b, v) { return b ? "<b>" + v + "</b>" : v }
+			function u(b, v) { return b ? '<u>' + v + '</u>' : v }
+			function b(b, v) { return b ? '<b style=font-size:larger>' + v + '</b>' : v }
 		}
 		
 		function AI(ck, df, a, m) {
@@ -133,8 +142,8 @@
 			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max, m)
 			this.right = ()=> ub(a, i = i < max ? i + 1 : 0, m)
 			this.value = ()=> ub(a, i, m)
-			this.minus = ()=> { var [min, max] = ((ck)=> typeof ck == 'number' ? [0, ck] : ck)(ck[i]); a[i] = ((v)=> v > min ? v - 1 : max)(a[i]); return ub(a, i ,m) }
 			this.plus  = ()=> { var [min, max] = ((ck)=> typeof ck == 'number' ? [0, ck] : ck)(ck[i]); a[i] = ((v)=> v < max ? v + 1 : min)(a[i]); return ub(a, i, m) }
+			this.minus = ()=> { var [min, max] = ((ck)=> typeof ck == 'number' ? [0, ck] : ck)(ck[i]); a[i] = ((v)=> v > min ? v - 1 : max)(a[i]); return ub(a, i ,m) }
 			this.up    = ()=> pop(a)
 		}
 		function AAI(ck, df, des, a) {
@@ -145,8 +154,8 @@
 			this.left  = ()=> des + ub(a, i = i > 0 ? i - 1 : max)
 			this.right = ()=> des + ub(a, i = i < max ? i + 1 : 0)
 			this.value = ()=> des + ub(a,i)
-			this.minus = ()=> { if (max > -1) max-=1; a = a.toSpliced(i, 1); if (i > max && i > 0) i-=1; return ub(a, i) }
 			this.plus  = ()=> {	max += 1; a = a.toSpliced(i, 0, undefined); return this.down() }
+			this.minus = ()=> { if (max > -1) max-=1; a = a.toSpliced(i, 1); if (i > max && i > 0) i-=1; return ub(a, i) }
 			this.down  = ()=> push(AI, ck, df.slice(), a[i])
 			this.up    = ()=> pop(a)
 			this.set   = (v)=> { a[i] = v; a.sort((a, b)=> a[0] - b[0]); i = a.indexOf(v) }
@@ -172,11 +181,6 @@
 			this.left  = ()=> des + ub(a, i = i > 0 ? i - 1 : max)
 			this.right = ()=> des + ub(a, i = i < max ? i + 1 : 0)
 			this.value = ()=> des + ub(a, i)
-			this.minus = ()=> {
-				var p = a[i]; delete o[p]
-				a = Object.keys(o); a.sort(); max -= 1; if (i > max) i--
-				return des + ub(a, i)
-			}
 			this.plus  = ()=> {
 				var prog=[]; for (var j=0; j<maxProg; j+=1) prog.push(String.fromCharCode(97+j));
 				for (var p of prog) if (!(p in o)) {
@@ -185,12 +189,17 @@
 				}
 				return des + ub(a, i)
 			}
-			this.down  = ()=> push(GOD, o[a[i]])
+			this.minus = ()=> {
+				var p = a[i]; delete o[p]
+				a = Object.keys(o); a.sort(); max -= 1; if (i > max) i--
+				return des + ub(a, i)
+			}
+			this.down  = ()=> push(GOD, a[i], o[a[i]])
 			this.up    = ()=> stack.length == 1 ? (save(), des + ub(a, i)) : pop()  
 			this.set   = (v)=> o[a[i]] = v
 		}
-		function GOD(v) {
-			var a = ['howOften', 'startTime', 'runTime']
+		function GOD(p, god) {
+			var a = ['howOften', 'startTime', 'runTime', 'manual']
 			var max = a.length - 1
 			var i = 0
 			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max)
@@ -198,14 +207,36 @@
 			this.value = ()=> ub(a, i)
 			this.down  = ()=> {
 				switch (i) {
-					case 0: return push(D, v[i])
-					case 1: return push(AAI, [23,59], hmDef(), a[i] + '<br>', v[i])
-					case 2: return push(AAI, [[1,maxStation], [1,60]], sm(1,1), a[i] + '<br>', v[i])
+					case 0: return push(D, god[i])
+					case 1: return push(AAI, [23,59], hmDef(), a[i] + '<br>', god[i])
+					case 2: return push(AAI, [[1,maxStation], [1,60]], sm(1,1), a[i] + '<br>', god[i])
+					case 3: return push(M, p, a[i] + '<br>', god[2])
 				}
 			}
-			this.up    = ()=> pop(v)
-			this.set   = (vv)=> v[i] = vv
+			this.up    = ()=> pop(god)
+			this.set   = (v)=> god[i] = v
 			function hmDef() { var date = new Date(); return new HM(date.getHours(), date.getMinutes()) }
+		}
+		var manual = {}
+		function M(p, des, ds) {
+			this.p = p
+			if (p in manual && ds == manual[p].ds )
+				var {m, a} = manual[p]
+			else {
+				manual[p] = { ds }
+				ds.sort((a, b)=> a[0] - b[0])
+				var m = []; for (d of ds) m.push('s' + d[0]); m.unshift('all')
+				var a = Array(1 + ds.length).fill(0)
+				manual[p] = Object.assign(manual[p], {m, a})
+			}
+			var max = a.length - 1
+			var i = 0
+			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max, m)
+			this.right = ()=> ub(a, i = i < max ? i + 1 : 0, m)
+			this.value = ()=> ub(a, i, m)
+			this.plus  = ()=> { if (!a[i] && (i && !a[0] || i==0 && !a.some(e=>e))) start(p, (!i ? '' : ds[i-1][0]), a, i); return ub(a, i, m) }
+			this.minus = ()=> { if ( a[i])  stop(p, (!i ? '' : ds[i-1][0]), a, i); return ub(a, i, m) }
+			this.up    = ()=> pop()
 		}
 		function D(o) {
 			var a = ['every', 'dow', 'odd', 'even', 'o/e']
