@@ -3,7 +3,8 @@ import datetime as dt
 import time as tm
 
 import config, os
-mtime = dt.date.fromtimestamp(os.path.getmtime(config.__file__))
+configDate = dt.date.fromtimestamp(os.path.getmtime(config.__file__))
+configTime = dt.datetime.fromtimestamp(os.path.getmtime(config.__file__))
 
 #import RPi.GPIO as gpio
 from GPIOEmulator.EmulatorGUI import GPIO as gpio
@@ -24,7 +25,7 @@ def invert (d):
 def isToday (now, tipo, *param):
     match tipo:
         case 'every':
-            return (now - mtime).days % param[0] == 0
+            return (now - configDate).days % param[0] == 0
         case 'odd':
             return now.day % 2 == 1
         case 'even':
@@ -53,6 +54,7 @@ def today (*now):
 delay = 1 # 0 nessun delay, 1 delay effettivo, 1/12 delay 5" per 1', 1/60 delay 1" per 1', 1/3600 delay 1" per 1h
 
 def sleep(minuti):
+    minuti *= config.perc / 100
     if delay > 0: tm.sleep(minuti*60*delay)
 
 def openStation(stazione, minuti):
@@ -65,23 +67,25 @@ def execTasks (tasks, *now):
     now = (dt.datetime.today() if len(now) == 0 else now[0]).replace(second=0, microsecond=0)
     while True:
         print("now:", now)
-        for (ora, programmi) in tasks:
-            datet = dt.datetime.combine(now.date(), ora)
-            #print("*", datet, now)
-            if datet > now:
-                minuti = int((datet - now).seconds / 60)
-                print("delay", str(minuti)+"'")
-                sleep(minuti)
-                now = dt.datetime.today() if delay == 1 else now + dt.timedelta(minutes=minuti)  
-            print(ora, "start")
-            for (programma, durate) in programmi:
-                print('  programma:', programma)
-                for (stazione, minuti) in durate:
-                    print('    stazione:', stazione, str(minuti)+'\'')
-                    openStation(stazione, minuti)
-                    now = dt.datetime.today() if delay == 1 else now + dt.timedelta(minutes=minuti)
+        if (configTime + dt.timedelta(hours=config.delay) - now).days <= 0:
+            for (ora, programmi) in tasks:
+                dateTask = dt.datetime.combine(now.date(), ora)
+                #print("*", dateTask, now)
+                if dateTask > now:
+                    minuti = int((dateTask - now).seconds / 60)
+                    print("delay", str(minuti)+"'")
+                    sleep(minuti)
+                    now = dt.datetime.today() if delay == 1 else now + dt.timedelta(minutes=minuti)  
+                print(ora, "start")
+                for (programma, durate) in programmi:
+                    print('  programma:', programma)
+                    for (stazione, minuti) in durate:
+                        print('    stazione:', stazione, str(minuti)+'\'')
+                        openStation(stazione, minuti)
+                        now = dt.datetime.today() if delay == 1 else now + dt.timedelta(minutes=minuti)
         minuti = int((dt.datetime.combine(now.date() + dt.timedelta(1), dt.time(0)) - now).seconds / 60)
-        print('delay', str(minuti)+"'", 'fino alle', now+dt.timedelta(minutes=minuti), 'di domani\n')
+        minuti = minuti if minuti != 0 else 1440
+        print('delay', str(minuti)+"'", 'fino alle', now + dt.timedelta(minutes=minuti), 'di domani\n')
         sleep(minuti)
         now = dt.datetime.today() if delay == 1 else now + dt.timedelta(minutes=minuti)
         tasks = today(now)

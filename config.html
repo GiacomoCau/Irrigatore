@@ -20,7 +20,8 @@
 	</div>
 	<script src="httpRequest.js"></script>
 	<script>
-		var config, maxProg = 8, maxStation = 8
+		var progs, perc=100, delay=0
+		var maxProg = 8, maxStation = 8
 		var local = false
 		function load() {
 			httpRequest({
@@ -28,6 +29,7 @@
 				onload: function () {
 					try {
 						eval(this.responseText.slice(this.responseText.indexOf('progs')))
+						push(PPDS)
 						push(P, progs)
 						if (Object.keys(progs).length == 1)	stack[0].down()
 					}
@@ -39,10 +41,12 @@
 			}).send()
 		}
 		function save() {
-			var s = 'from datetime import time as hm\ndef sm(s, m): return [s, m]\n\n'
+			var s = '\nfrom datetime import time as hm\ndef sm(s, m): return [s, m]\n\n'
 			s += 'progs = {\n'
 			for (p in progs) s += '\t\'' + p + '\': ' + serialize(progs[p]) + ',\n'
 			s += '}\n'
+			s += 'perc = ' + perc + '\n'
+			s += 'delay = ' + delay + '\n'
 			httpRequest({
 				method:'post', url:'server.py?save', async:false, body:s,
 				onload: function (e) { alert(this.responseText) },
@@ -106,10 +110,10 @@
 		}
 		
 		function I(ck, val) {
-			var [min, max] = typeof ck == 'number' ? [0, ck] : ck
+			var [min, max, step=1] = typeof ck == 'number' ? [0, ck] : ck
 			var i = val || min
-			this.plus  = ()=> i = i < max ? i + 1 : min
-			this.minus = ()=> i = i > min ? i - 1 : max 
+			this.plus  = ()=> i = i < max ? i + step : min
+			this.minus = ()=> i = i > min ? i - step : max 
 			this.value = ()=> i
 			this.up    = ()=> pop(i)
 		}
@@ -184,7 +188,7 @@
 			this.plus  = ()=> {
 				var prog=[]; for (var j=0; j<maxProg; j+=1) prog.push(String.fromCharCode(97+j));
 				for (var p of prog) if (!(p in o)) {
-					o[p] = [['every', 1]]; a = Object.keys(o); a.sort(); max = a.length - 1; i = a.indexOf(p)
+					o[p] = []; a = Object.keys(o); a.sort(); max = a.length - 1; i = a.indexOf(p)
 					break
 				}
 				return des + ub(a, i)
@@ -196,6 +200,7 @@
 			}
 			this.down  = ()=> push(GOD, a[i], o[a[i]])
 			this.up    = ()=> stack.length == 1 ? (save(), des + ub(a, i)) : pop()  
+			this.up    = ()=> pop()  
 			this.set   = (v)=> o[a[i]] = v
 		}
 		function GOD(p, god) {
@@ -217,6 +222,24 @@
 			this.set   = (v)=> god[i] = v
 			function hmDef() { var date = new Date(); return new HM(date.getHours(), date.getMinutes()) }
 		}
+		function PPDS() {
+			var a = ['programs', '%', 'delay', 'save']
+			var max = a.length - 1
+			var i = 0
+			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max)
+			this.right = ()=> ub(a, i = i < max ? i + 1 : 0)
+			this.value = ()=> ub(a, i)
+			this.down  = ()=> {
+				switch (i) {
+					case 0: return push(P, progs)
+					case 1: return push(I, [10,150,10], perc)
+					case 2: return push(I, [0,72], delay)
+					case 3: save(); return ub(a, i)
+				}
+			}
+			this.up    = ()=> (save(), ub(a, i))
+			this.set   = (v)=> { switch (i) { case 1: perc = v; break; case 2: delay=v; break; }}
+		}
 		var manual = {}
 		function M(p, des, ds) {
 			this.p = p
@@ -225,7 +248,7 @@
 			else {
 				manual[p] = { ds }
 				ds.sort((a, b)=> a[0] - b[0])
-				var m = []; for (d of ds) m.push('s' + d[0]); m.unshift('all')
+				var m = []; for (d of ds) m.push('s' + d[0] + '-' + d[1] + '\''); m.unshift('all')
 				var a = Array(1 + ds.length).fill(0)
 				manual[p] = Object.assign(manual[p], {m, a})
 			}
@@ -234,11 +257,12 @@
 			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max, m)
 			this.right = ()=> ub(a, i = i < max ? i + 1 : 0, m)
 			this.value = ()=> ub(a, i, m)
-			this.plus  = ()=> { if (!a[i] && (i && !a[0] || i==0 && !a.some(e=>e))) start(p, (!i ? '' : ds[i-1][0]), a, i); return ub(a, i, m) }
-			this.minus = ()=> { if ( a[i])  stop(p, (!i ? '' : ds[i-1][0]), a, i); return ub(a, i, m) }
+			this.plus  = ()=> { if (!a[i] && (i && !a[0] || !i && !a.some(e=>e))) start(p, (!i ? '' : ds[i-1][0]), a, i); return ub(a, i, m) }
+			this.minus = ()=> { if ( a[i]) stop(p, (!i ? '' : ds[i-1][0]), a, i); return ub(a, i, m) }
 			this.up    = ()=> pop()
 		}
 		function D(o) {
+			if (!o) o = ['every', 1]
 			var a = ['every', 'dow', 'odd', 'even', 'o/e']
 			var i = a.indexOf(o[0])
 			var max = a.length - 1
@@ -246,12 +270,12 @@
 			this.right = ()=> ub(a, i = i < max ? i + 1 : 0, o[0])
 			this.value = ()=> ub(a, i, o[0])
 			this.down  = ()=> { 
-				switch (a[i]) {
-					case   'dow': return push(AI, 1, [0,0,0,0,0,0,0], o[0] == 'dow' ? o.slice(1) : undefined, ['M', 'Tu', 'W', 'Th', 'F', 'Sa', 'Su'])
-					case 'every': return push(I, [1, 30], o[0] == 'every' ? o[1] : undefined)
-					case   'o/e': return push(I,  1, o[0] == 'o/e' ? o[1] : undefined)
-					case   'odd':
-					case  'even': this.set([]); return ub(a, i, o[0])
+				switch (i) {
+					case 1: return push(AI, 1, [0,0,0,0,0,0,0], o[0] == 'dow' ? o.slice(1) : undefined, ['M', 'Tu', 'W', 'Th', 'F', 'Sa', 'Su'])
+					case 0: return push(I, [1, 30], o[0] == 'every' ? o[1] : undefined)
+					case 4: return push(I,  1, o[0] == 'o/e' ? o[1] : undefined)
+					case 2:
+					case 3: this.set([]); return ub(a, i, o[0])
 				}
 			}
 			this.up    = ()=> pop(o)
