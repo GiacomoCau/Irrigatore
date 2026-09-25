@@ -29,7 +29,7 @@
 				onload: function () {
 					try {
 						eval(this.responseText.slice(this.responseText.indexOf('progs')))
-						push(PPDS)
+						push(PPDTS)
 						push(P, progs)
 						if (Object.keys(progs).length == 1)	stack[0].down()
 					}
@@ -81,10 +81,10 @@
 				onload: function () { a[i]=1; pid[ps] = this.responseText; },
 				onerror: function (e) { alert(`start error: ${e.type}`) },
 			}).send()
-			if (!pid[ps]) return
+			if (!pid[ps] || !isNaN(p)) return
 			httpRequest({
 				method:'get', url:'server.py?wait ' + pid[ps], async:true,
-				onload: function () { delete pid[ps]; a[i]=0; if (stack[0] instanceof M && stack[0].p == p) output.innerHTML = stack[0].value()  },
+				onload: function () { delete pid[ps]; a[i]=0; if (stack[0] instanceof M && stack[0].p == p) output.innerHTML = stack[0].value() },
 				onerror: function (e) { delete pid[ps]; a[i]=0; alert(`wait error: ${e.type}`); },
 			}).send()
 		}
@@ -93,7 +93,8 @@
 			if (!pid[ps]) return
 			httpRequest({
 				method:'get', url:'server.py?stop ' + pid[ps] + ' ' + ps, async:false,
-				onerror: function (e) { alert(`stop error: ${e.type}`); },
+				onload: function () { delete pid[ps]; a[i]=0 },
+				onerror: function (e) { delete pid[ps]; a[i]=0; alert(`stop error: ${e.type}`); },
 			}).send()
 		}
 		
@@ -222,8 +223,8 @@
 			this.set   = (v)=> god[i] = v
 			function hmDef() { var date = new Date(); return new HM(date.getHours(), date.getMinutes()) }
 		}
-		function PPDS() {
-			var a = ['programs', '%', 'delay', 'save']
+		function PPDTS() {
+			var a = ['programs', '%', 'delay', 'test', 'save']
 			var max = a.length - 1
 			var i = 0
 			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max)
@@ -234,7 +235,8 @@
 					case 0: return push(P, progs)
 					case 1: return push(I, [10,150,10], perc)
 					case 2: return push(I, [0,72], delay)
-					case 3: save(); return ub(a, i)
+					case 3: return push(T)
+					case 4: save(); return ub(a, i)
 				}
 			}
 			this.up    = ()=> (save(), ub(a, i))
@@ -243,7 +245,7 @@
 		var manual = {}
 		function M(p, des, ds) {
 			this.p = p
-			if (p in manual && ds == manual[p].ds )
+			if (p in manual && ds == manual[p].ds)
 				var {m, a} = manual[p]
 			else {
 				manual[p] = { ds }
@@ -280,6 +282,18 @@
 			}
 			this.up    = ()=> pop(o)
 			this.set   = (v)=> o = typeof v == 'number' ? [a[i], v] : [a[i], ... v]
+		}
+		function T() {
+			var m = []; for (var i=1; i<=maxStation; i+=1) m.push('s' + i)
+			var a = Array(m.length).fill(0)
+			var max = a.length - 1
+			var i = 0
+			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max, m)
+			this.right = ()=> ub(a, i = i < max ? i + 1 : 0, m)
+			this.value = ()=> ub(a, i, m)
+			this.plus  = ()=> { if (!a[i]) start(i+1, '', a, i); return ub(a, i, m) }
+			this.minus = ()=> { if ( a[i])  stop(i+1, '', a, i); return ub(a, i, m) }
+			this.up    = ()=> a.some(e=>e) ? ub(a, i, m) : pop()
 		}
 	</script>
 </body>

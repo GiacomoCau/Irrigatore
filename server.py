@@ -38,12 +38,17 @@ match service:
             print(args + ' not accessible')
         else:
             process.kill()
-            durate = config.progs[ips[1]][2] if len(ips) == 2 else [[s,m] for (s,m) in config.progs[ips[1]][2] if s == int(ips[2])]
             stazioni = [4, 17, 18, 27, 22, 23, 24, 25]
-            for [s,m] in durate:
-                stazione = stazioni[s-1]
+            if ips[1].isdigit():
+                stazione = stazioni[int(ips[1])-1]
                 gpio.setup(stazione, gpio.OUT)
-                gpio.output(stazione, gpio.LOW)
+                gpio.output(stazione, gpio.LOW)            
+            else:
+                durate = config.progs[ips[1]][2] if len(ips) == 2 else [[s,m] for (s,m) in config.progs[ips[1]][2] if s == int(ips[2])]
+                for [s,m] in durate:
+                    stazione = stazioni[s-1]
+                    gpio.setup(stazione, gpio.OUT)
+                    gpio.output(stazione, gpio.LOW)
             print(args + ' stopped')
         sys.stdout.flush()
         psutil.Process(os.getpid()).kill()
