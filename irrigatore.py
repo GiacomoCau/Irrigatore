@@ -1,20 +1,11 @@
 
-import datetime as dt
-import time as tm
+import os, config, datetime as dt
+from util import stazioni, sleep, delay, gpio
 
-import config, os
 configDate = dt.date.fromtimestamp(os.path.getmtime(config.__file__))
 configTime = dt.datetime.fromtimestamp(os.path.getmtime(config.__file__))
 
-#import RPi.GPIO as gpio
-from GPIOEmulator.EmulatorGUI import GPIO as gpio
-gpio.setwarnings(False)
-gpio.setmode(gpio.BCM)
-
-stazioni = [4, 17, 18, 27, 22, 23, 24, 25]
-for s in stazioni: gpio.setup(s, gpio.OUT)
 maxS = len(stazioni)
-
 
 def invert (d):
     i = {}
@@ -51,12 +42,6 @@ def today (*now):
 #today(dt.datetime.combine(dt.datetime.today(), dt.time(8,30)))
 #today(dt.datetime(2026,8,6,8,30))
 
-delay = 1 # 0 nessun delay, 1 delay effettivo, 1/12 delay 5" per 1', 1/60 delay 1" per 1', 1/3600 delay 1" per 1h
-
-def sleep(minuti):
-    minuti *= config.perc / 100
-    if delay > 0: tm.sleep(minuti*60*delay)
-
 def openStation(stazione, minuti):
     stazione = stazioni[stazione - 1]
     gpio.output(stazione, gpio.HIGH)
@@ -90,5 +75,4 @@ def execTasks (tasks, *now):
         now = dt.datetime.today() if delay == 1 else now + dt.timedelta(minutes=minuti)
         tasks = today(now)
 
-delay = 1/3600 # delay 1" per 60' ... 24" per 1gg
 execTasks(today())

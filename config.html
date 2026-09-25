@@ -200,7 +200,6 @@
 				return des + ub(a, i)
 			}
 			this.down  = ()=> push(GOD, a[i], o[a[i]])
-			this.up    = ()=> stack.length == 1 ? (save(), des + ub(a, i)) : pop()  
 			this.up    = ()=> pop()  
 			this.set   = (v)=> o[a[i]] = v
 		}
