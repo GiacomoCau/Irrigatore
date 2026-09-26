@@ -11,9 +11,7 @@ match service:
     case 'load':
         print(open('config.py', 'r').read())
     case 'save':
-        post = sys.stdin.read(int(os.environ.get('content_length', '0')))
-        open('config.py', 'w').write(post)
-        print("saved!")
+        open('config.py', 'w').write(sys.stdin.read(int(os.environ.get('content_length', '0'))))
         import psutil, subprocess
         if os.path.exists('pid'):
             try:
@@ -22,8 +20,8 @@ match service:
                 pass
             else:
                 process.kill()
-        process = subprocess.Popen(['python', 'irrigatore.py'])
-        open('pid', 'w').write(str(process.pid))
+        subprocess.Popen(['python', 'irrigatore.py'])
+        print("saved!")
     case 'start':
         import subprocess
         process = subprocess.Popen(['python', 'manuale.py', args])

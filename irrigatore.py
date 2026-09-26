@@ -43,9 +43,6 @@ def today (*now):
     durate = {p: sorted([[s, m] for (s, m) in ds if s >= 1 and s <= maxS]) for (p, ds) in durate.items()}
     return [[t, [[p, durate[p]] for p in ps]] for (t, ps) in starts]
 
-#today(dt.datetime.combine(dt.datetime.today(), dt.time(8,30)))
-#today(dt.datetime(2026,8,6,8,30))
-
 def openStation(stazione, minuti):
     stazione = stazioni[stazione - 1]
     gpio.output(stazione, gpio.HIGH)
@@ -59,7 +56,6 @@ def execTasks (tasks, *now):
         if (configTime + dt.timedelta(hours=config.delay) - now).days <= 0:
             for (ora, programmi) in tasks:
                 dateTask = dt.datetime.combine(now.date(), ora)
-                #print("*", dateTask, now)
                 if dateTask > now:
                     minuti = int((dateTask - now).seconds / 60)
                     print("delay", str(minuti)+"'")
@@ -88,4 +84,5 @@ signal.signal(signal.SIGTERM, delpid) # termination
 signal.signal(signal.SIGBREAK, delpid) # ctrl-break
 signal.signal(signal.SIGABRT, delpid)
 """
+    
 execTasks(today())

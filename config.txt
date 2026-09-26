@@ -20,12 +20,37 @@ Giorni (di irrigazione per programma) (howOften)
 	['odd']      # giorni dispari
 	['even']     # giorni pari
 	['o/e', n]   # giorni pari o dispari a seconda che n sia 0 o 1 
-	['dow', [L, Ma, Me, G, V, S, D]] # L, Ma, Me, G, V, S, D a seconda che siano 0 o 1 
+	['dow', M, Tu, W, Th, F, Sa, Su] # M, Tu, W, Th, F, Sa, Su a seconda che siano 0 o 1 
 			
 Orari (di partenza per programma) (timeStart)
 
-	[ hm(ore,minuti), ... ]
+	[ hm(ore, minuti), ... ]
 	
 Durate (di irrigazione per programma e stazione) (runTime)
 
 	[ sm(stazione, minuti), ... ] # con stazione fra 1 ed 8 e minuti tra 1 e 60
+
+
+https://stackoverflow.com/questions/44871139/how-do-i-run-python-cgi-script-on-apache2-server-on-ubuntu-16-04
+
+https://www.tutorialspoint.com/article/how-to-execute-python-cgi-script-on-apache-server
+
+
+https://httpd.apache.org/docs/current/howto/cgi.html
+
+in httpd.conf
+
+ScriptAlias "/irrigazione/" "/.../irrigazione/" 
+forse meglio ..
+Alias "/irrigazione/" "/.../irrigazione/" 
+ 
+<Directory "/.../irrigazione"
+	Opzioni +ExecCGI
+	AddHandler cgi-script .py
+</Directory> 
+
+chmod a+x first.py
+
+first.py
+	#!/usr/bin/env python3
+	...

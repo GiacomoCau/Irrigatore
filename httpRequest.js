@@ -23,6 +23,6 @@ function httpRequest(args) {
 		}
 	}
 	var requestSend = request.send
-	request.send = function () { requestSend.call(request, body) }
+	request.send = function () { requestSend.call(request, body); return request}
 	return request
 }
