@@ -43,7 +43,7 @@
 		function save() {
 			var s = '\nfrom datetime import time as hm\ndef sm(s, m): return [s, m]\n\n'
 			s += 'progs = {\n'
-			for (p in progs) s += '\t\'' + p + '\': ' + serialize(progs[p]) + ',\n'
+			for (var p in progs) s += '\t\'' + p + '\': ' + serialize(progs[p]) + ',\n'
 			s += '}\n'
 			s += 'perc = ' + perc + '\n'
 			s += 'delay = ' + delay + '\n'
@@ -126,13 +126,13 @@
 			if (a instanceof SM)
 				return u(i==0, 's' + a[0]) + '-' + u(i==1, a[1] + '\'')
 				
-			s = ''
+			var s = ''
 			if (!m)
-				for (ii in a) s += sp(s, ' ') + u(ii == i, a[ii])
-			else if (typeof m == 'string')
-				for (ii in a) s += sp(s, ' ') + u(ii == i, b(a[ii] == m, a[ii]))
-			else
-				for (ii in a) s += sp(s, ' ') + u(ii == i, b(a[ii], m[ii]))
+				for (var j in a) s += sp(s, ' ') + u(j == i, a[j])
+			else if (Array.isArray(m))
+				for (var j in a) s += sp(s, ' ') + u(j == i, b(a[j], m[j]))
+			else // if (typeof m == 'string')
+				for (var j in a) s += sp(s, ' ') + u(j == i, b(a[j] == m, a[j]))
 			return s
 			
 			function u(b, v) { return b ? '<u>' + v + '</u>' : v }
@@ -182,7 +182,7 @@
 			a.sort()
 			var max = a.length - 1
 			var i = 0
-			des = 'programs<br>'
+			var des = 'programs<br>'
 			this.left  = ()=> des + ub(a, i = i > 0 ? i - 1 : max)
 			this.right = ()=> des + ub(a, i = i < max ? i + 1 : 0)
 			this.value = ()=> des + ub(a, i)
@@ -212,7 +212,7 @@
 			this.value = ()=> ub(a, i)
 			this.down  = ()=> {
 				switch (i) {
-					case 0: return push(D, god[i])
+					case 0: return push(D, god[i], a[i] + '<br>')
 					case 1: return push(AAI, [23,59], hmDef(), a[i] + '<br>', god[i])
 					case 2: return push(AAI, [[1,maxStation], [1,60]], sm(1,1), a[i] + '<br>', god[i])
 					case 3: return push(M, p, a[i] + '<br>', god[2])
@@ -235,11 +235,11 @@
 					case 1: return push(I, [10,150,10], perc)
 					case 2: return push(I, [0,72], delay)
 					case 3: return push(T)
-					case 4: save(); return ub(a, i)
+					case 4: return save(), ub(a, i)
 				}
 			}
 			this.up    = ()=> (save(), ub(a, i))
-			this.set   = (v)=> { switch (i) { case 1: perc = v; break; case 2: delay=v; break; }}
+			this.set   = (v)=> { switch (i) { case 1: perc = v; break; case 2: delay = v; break; }}
 		}
 		var manual = {}
 		function M(p, des, ds) {
@@ -249,34 +249,34 @@
 			else {
 				manual[p] = { ds }
 				ds.sort((a, b)=> a[0] - b[0])
-				var m = []; for (d of ds) m.push('s' + d[0] + '-' + d[1] + '\''); m.unshift('all')
+				var m = []; for (var d of ds) m.push('s' + d[0] + '-' + d[1] + '\''); m.unshift('all')
 				var a = Array(1 + ds.length).fill(0)
-				manual[p] = Object.assign(manual[p], {m, a})
+				Object.assign(manual[p], {m, a})
 			}
 			var max = a.length - 1
 			var i = 0
-			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max, m)
-			this.right = ()=> ub(a, i = i < max ? i + 1 : 0, m)
-			this.value = ()=> ub(a, i, m)
-			this.plus  = ()=> { if (!a[i] && (i && !a[0] || !i && !a.some(e=>e))) start(p, (!i ? '' : ds[i-1][0]), a, i); return ub(a, i, m) }
-			this.minus = ()=> { if ( a[i]) stop(p, (!i ? '' : ds[i-1][0]), a, i); return ub(a, i, m) }
+			this.left  = ()=> des + ub(a, i = i > 0 ? i - 1 : max, m)
+			this.right = ()=> des + ub(a, i = i < max ? i + 1 : 0, m)
+			this.value = ()=> des + ub(a, i, m)
+			this.plus  = ()=> { if (!a[i] && (i && !a[0] || !i && !a.some(e=>e))) start(p, (!i ? '' : ds[i-1][0]), a, i); return des + ub(a, i, m) }
+			this.minus = ()=> { if ( a[i]) stop(p, (!i ? '' : ds[i-1][0]), a, i); return des + ub(a, i, m) }
 			this.up    = ()=> pop()
 		}
-		function D(o) {
+		function D(o, des) {
 			if (!o) o = ['every', 1]
 			var a = ['every', 'dow', 'odd', 'even', 'o/e']
 			var i = a.indexOf(o[0])
 			var max = a.length - 1
-			this.left  = ()=> ub(a, i = i > 0 ? i - 1 : max, o[0])
-			this.right = ()=> ub(a, i = i < max ? i + 1 : 0, o[0])
-			this.value = ()=> ub(a, i, o[0])
+			this.left  = ()=> des + ub(a, i = i > 0 ? i - 1 : max, o[0])
+			this.right = ()=> des + ub(a, i = i < max ? i + 1 : 0, o[0])
+			this.value = ()=> des + ub(a, i, o[0])
 			this.down  = ()=> { 
 				switch (i) {
 					case 1: return push(AI, 1, [0,0,0,0,0,0,0], o[0] == 'dow' ? o.slice(1) : undefined, ['M', 'Tu', 'W', 'Th', 'F', 'Sa', 'Su'])
 					case 0: return push(I, [1, 30], o[0] == 'every' ? o[1] : undefined)
 					case 4: return push(I,  1, o[0] == 'o/e' ? o[1] : undefined)
 					case 2:
-					case 3: this.set([]); return ub(a, i, o[0])
+					case 3: this.set([]); return des + ub(a, i, o[0])
 				}
 			}
 			this.up    = ()=> pop(o)
