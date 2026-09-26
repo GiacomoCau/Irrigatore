@@ -14,6 +14,16 @@ match service:
         post = sys.stdin.read(int(os.environ.get('content_length', '0')))
         open('config.py', 'w').write(post)
         print("saved!")
+        import psutil, subprocess
+        if os.path.exists('pid'):
+            try:
+                process = psutil.Process(int(open('pid', 'r').read()))
+            except:
+                pass
+            else:
+                process.kill()
+        process = subprocess.Popen(['python', 'irrigatore.py'])
+        open('pid', 'w').write(str(process.pid))
     case 'start':
         import subprocess
         process = subprocess.Popen(['python', 'manuale.py', args])

@@ -2,6 +2,10 @@
 import os, config, datetime as dt
 from util import stazioni, sleep, delay, gpio
 
+pid = open('pid', 'w')
+pid.write(str(os.getpid()))
+pid.close()
+
 configDate = dt.date.fromtimestamp(os.path.getmtime(config.__file__))
 configTime = dt.datetime.fromtimestamp(os.path.getmtime(config.__file__))
 
@@ -75,4 +79,13 @@ def execTasks (tasks, *now):
         now = dt.datetime.today() if delay == 1 else now + dt.timedelta(minutes=minuti)
         tasks = today(now)
 
+"""
+import signal
+def delpid (signum, frame):
+    if os.path.exists('pid'): os.remove('pid')
+signal.signal(signal.SIGINT, delpid) # ctrl-c
+signal.signal(signal.SIGTERM, delpid) # termination
+signal.signal(signal.SIGBREAK, delpid) # ctrl-break
+signal.signal(signal.SIGABRT, delpid)
+"""
 execTasks(today())
